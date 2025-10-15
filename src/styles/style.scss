@@ -1,0 +1,70 @@
+$primary: #ff7900;
+$warning: #e6871a;
+$success: #499949;
+
+$border-radius-sm: 0.25rem; // Default for .rounded-1
+$border-radius: 0.5rem; // Default for .rounded
+$border-radius-lg: 1rem; // Default for .rounded-3
+$border-radius-pill: 50rem; // Default for .rounded-pill
+
+@import "bootstrap/scss/bootstrap";
+@import "@smastrom/react-rating/style.css";
+@import url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Nata+Sans:wght@100..900&display=swap");
+
+body {
+  font-family: "Inter", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  color: #050506;
+}
+
+.fw-semibold {
+  font-weight: 500;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+button {
+  &.btn {
+    font-weight: 500;
+
+    &.btn-primary {
+      color: $white;
+
+      &:active {
+        color: $white;
+      }
+    }
+
+    &.btn-border {
+      border: solid 1px $border-color;
+
+      &:active {
+        border: solid 1px $border-color;
+      }
+    }
+  }
+}
+
+table.table {
+  thead {
+    th {
+      font-weight: 500;
+      background-color: #f5f7fa;
+      padding: 16px 12px;
+    }
+  }
+
+  tbody {
+    td {
+      padding: 16px 12px;
+    }
+  }
+}
+
+.pagination.react-paginate {
+  margin-bottom: 0px;
+}

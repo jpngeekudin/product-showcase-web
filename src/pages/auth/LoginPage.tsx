@@ -40,7 +40,7 @@ export default function LoginPage() {
               })
               .then((res) => {
                 if (!!res.data.data) {
-                  setStorageItem("auth", { token: res.data.data.access_token });
+                  setStorageItem("auth", { token: res.data.data.token.access_token });
                   navigate("/");
                 }
               });

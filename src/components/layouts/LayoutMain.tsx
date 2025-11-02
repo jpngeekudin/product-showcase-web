@@ -1,11 +1,17 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import AppLogo from "../icons/AppLogo";
 import { Outlet, useNavigate } from "react-router-dom";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import AppTooltip from "../AppTooltip";
+import { getStorageItem } from "../../helpers/storage.helper";
+import type { IUser } from "../../interfaces/user.interface";
 
 export default function LayoutMain() {
   const navigate = useNavigate();
+
+  const user: IUser = useMemo(() => {
+    return getStorageItem("user");
+  }, []);
 
   return (
     <div>
@@ -47,6 +53,17 @@ export default function LayoutMain() {
                         >
                           Users Management
                         </div>
+                        <div
+                          className="list-group-item list-group-item-action text-danger"
+                          onClick={() => {
+                            localStorage.clear();
+                            navigate("/auth/login");
+                            document.body.click();
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
+                          Logout
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -58,7 +75,7 @@ export default function LayoutMain() {
                 style={{ gap: 10, cursor: "pointer" }}
               >
                 <i className="fa fa-chevron-down"></i>
-                <div className="fw-semibold">Admin</div>
+                <div className="fw-semibold">{user?.fullname}</div>
                 <div
                   className="rounded-circle bg-light border"
                   style={{ height: 32, width: 32 }}

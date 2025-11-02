@@ -442,7 +442,7 @@ function ProductAddModal({
       <Modal.Body>
         <Form
           onSubmit={handleSubmit((value) => {
-            // suibmit: create new
+            // submit: create new
             if (!edited) {
               const uploadBody = new FormData();
               uploadBody.append("file", value.image);

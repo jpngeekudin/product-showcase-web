@@ -11,8 +11,10 @@ import { Form, Modal, OverlayTrigger } from "react-bootstrap";
 import { toast } from "react-toastify";
 
 export default function UserListPage() {
-  const [modal, setModal] = useState({ show: false });
   const [listRefreshCounter, setListRefreshCounter] = useState(0);
+  const [modal, setModal] = useState<{ show: boolean; edited?: IUser }>({
+    show: false,
+  });
 
   return (
     <>
@@ -33,12 +35,16 @@ export default function UserListPage() {
             </button>
           </div>
         </div>
-        <UserList refreshCounter={listRefreshCounter} />
+        <UserList
+          refreshCounter={listRefreshCounter}
+          onEdit={(user) => setModal({ show: true, edited: user })}
+        />
       </div>
 
       {modal.show && (
         <UserModal
           show={modal.show}
+          edited={modal.edited}
           onHide={() => setModal({ show: false })}
           onAdded={() => setListRefreshCounter((c) => c + 1)}
         />
@@ -47,7 +53,13 @@ export default function UserListPage() {
   );
 }
 
-function UserList({ refreshCounter = 0 }: { refreshCounter?: number }) {
+function UserList({
+  refreshCounter = 0,
+  onEdit,
+}: {
+  refreshCounter?: number;
+  onEdit: (user: IUser) => void;
+}) {
   const [internalRefershCounter, setInternalRefreshCounter] = useState(0);
   const [users, setUsers] = useState<IUser[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -206,6 +218,13 @@ function UserList({ refreshCounter = 0 }: { refreshCounter?: number }) {
                                   <div
                                     className="list-group-item list-group-item-action"
                                     style={{ cursor: "pointer" }}
+                                    onClick={() => onEdit(user)}
+                                  >
+                                    Edit
+                                  </div>
+                                  <div
+                                    className="list-group-item list-group-item-action"
+                                    style={{ cursor: "pointer" }}
                                     onClick={() => {
                                       axiosInstance
                                         .delete(`/api/user/${user._id}`)
@@ -256,14 +275,17 @@ function UserList({ refreshCounter = 0 }: { refreshCounter?: number }) {
 
 function UserModal({
   show,
+  edited,
   onAdded,
   onHide,
 }: {
   show: boolean;
+  edited?: IUser;
   onAdded: () => void;
   onHide: () => void;
 }) {
-  const { control, register, watch, handleSubmit, setValue } = useForm<{
+  const { control, register, watch, handleSubmit, setValue, reset } = useForm<{
+    _id: string;
     fullname: string;
     username: string;
     phone: string;
@@ -272,6 +294,17 @@ function UserModal({
     status: boolean;
     image: File;
   }>();
+
+  useEffect(() => {
+    if (!edited) return;
+    reset({ ...edited, image: undefined });
+    axiosInstance
+      .get(`/api/files/get?path=${edited.image}`, { responseType: "blob" })
+      .then((res) => {
+        const image = new File([res.data], "image");
+        setValue("image", image);
+      });
+  }, [edited]);
 
   const inputFileRef = useRef<HTMLInputElement>(null);
   const image = watch("image");
@@ -298,29 +331,59 @@ function UserModal({
       <Modal.Body>
         <Form
           onSubmit={handleSubmit((value) => {
-            const uploadBody = new FormData();
-            uploadBody.append("file", value.image);
-            const uploadQuery = new URLSearchParams({ type: "user_image" });
-            axiosInstance
-              .post(`/api/files/upload?${uploadQuery.toString()}`, uploadBody)
-              .then((res) => {
-                axiosInstance
-                  .post(`/api/user`, {
-                    username: value.username,
-                    password: value.password,
-                    fullname: value.fullname,
-                    phone: value.phone,
-                    email: value.email,
-                    status: value.status,
-                    image: res.data.data,
-                  })
-                  .then((res) => {
-                    onAdded();
-                    onHide();
-                  })
-                  .catch(console.error);
-              })
-              .catch(console.error);
+            // submit: create new
+            if (!edited) {
+              const uploadBody = new FormData();
+              uploadBody.append("file", value.image);
+              const uploadQuery = new URLSearchParams({ type: "user_image" });
+              axiosInstance
+                .post(`/api/files/upload?${uploadQuery.toString()}`, uploadBody)
+                .then((res) => {
+                  axiosInstance
+                    .post(`/api/user`, {
+                      username: value.username,
+                      password: value.password,
+                      fullname: value.fullname,
+                      phone: value.phone,
+                      email: value.email,
+                      status: value.status,
+                      image: res.data.data,
+                    })
+                    .then((res) => {
+                      onAdded();
+                      onHide();
+                    })
+                    .catch(console.error);
+                })
+                .catch(console.error);
+            }
+
+            // submit: edit existing
+            else {
+              const uploadBody = new FormData();
+              uploadBody.append("file", value.image);
+              const uploadQuery = new URLSearchParams({ type: "user_image" });
+              axiosInstance
+                .post(`/api/files/upload?${uploadQuery.toString()}`, uploadBody)
+                .then((res) => {
+                  axiosInstance
+                    .put(`/api/user/${value._id}`, {
+                      username: value.username,
+                      password: value.password,
+                      fullname: value.fullname,
+                      phone: value.phone,
+                      email: value.email,
+                      status: value.status,
+                      image: res.data.data,
+                    })
+                    .then((res) => {
+                      onAdded();
+                      onHide();
+                    })
+                    .catch(console.error);
+                })
+                .catch(console.error);
+            }
           })}
         >
           <div className="row mb-3">
@@ -456,9 +519,11 @@ function UserModal({
             className="d-flex align-items-center justify-content-end"
             style={{ gap: 10 }}
           >
-            <button className="btn btn-border">Cancel</button>
+            <button className="btn btn-border" onClick={onHide}>
+              Cancel
+            </button>
             <button className="btn btn-primary" type="submit">
-              Tambah
+              Simpan
             </button>
           </div>
         </Form>

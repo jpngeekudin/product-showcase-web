@@ -204,7 +204,10 @@ function UserList({
                       className="d-flex align-items-center"
                       style={{ gap: 10 }}
                     >
-                      <div className="text-primary fw-bold cursor-pointer">
+                      <div
+                        className="text-primary fw-bold cursor-pointer"
+                        onClick={() => onEdit(user)}
+                      >
                         Lihat Detail
                       </div>
                       <OverlayTrigger

@@ -16,8 +16,10 @@ const productCategoryOpts = [
 ];
 
 export default function ProductListPage() {
-  const [modalAdd, setModalAdd] = useState({ show: false });
   const [listRefreshCounter, setListRefreshCounter] = useState(0);
+  const [modalAdd, setModalAdd] = useState<{ show: boolean; item?: IProduct }>({
+    show: false,
+  });
 
   return (
     <>
@@ -40,12 +42,16 @@ export default function ProductListPage() {
             </button>
           </div>
         </div>
-        <ProductList refreshCounter={listRefreshCounter} />
+        <ProductList
+          refreshCounter={listRefreshCounter}
+          onEdit={(product) => setModalAdd({ show: true, item: product })}
+        />
       </div>
 
       {modalAdd.show && (
         <ProductAddModal
           show={modalAdd.show}
+          edited={modalAdd.item}
           onAdded={() => {
             toast.success("Success adding product");
             setListRefreshCounter((c) => c + 1);
@@ -57,7 +63,13 @@ export default function ProductListPage() {
   );
 }
 
-function ProductList({ refreshCounter = 0 }: { refreshCounter?: number }) {
+function ProductList({
+  refreshCounter = 0,
+  onEdit,
+}: {
+  refreshCounter?: number;
+  onEdit: (product: IProduct) => void;
+}) {
   const [internalRefreshCounter, setInternalRefreshCounter] = useState(0);
   const [products, setProducts] = useState<IProduct[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -236,6 +248,10 @@ function ProductList({ refreshCounter = 0 }: { refreshCounter?: number }) {
         <ProductDetailModal
           show={modalDetail.show}
           data={modalDetail.data}
+          onEdit={() => {
+            onEdit(modalDetail.data!);
+            setModalDetail({ show: false });
+          }}
           onDelete={() => setInternalRefreshCounter((c) => c + 1)}
           onHide={() => setModalDetail({ show: false })}
         />
@@ -247,11 +263,13 @@ function ProductList({ refreshCounter = 0 }: { refreshCounter?: number }) {
 function ProductDetailModal({
   show,
   data,
+  onEdit,
   onDelete,
   onHide,
 }: {
   show: boolean;
   data: IProduct;
+  onEdit: () => void;
   onDelete?: () => void;
   onHide: () => void;
 }) {
@@ -356,7 +374,7 @@ function ProductDetailModal({
           >
             Hapus
           </button>
-          <button className="btn btn-primary">
+          <button className="btn btn-primary" onClick={onEdit}>
             <i className="fa fa-pencil me-1"></i>
             <span>Edit Produk</span>
           </button>
@@ -368,14 +386,16 @@ function ProductDetailModal({
 
 function ProductAddModal({
   show,
+  edited,
   onAdded,
   onHide,
 }: {
   show: boolean;
+  edited?: IProduct;
   onAdded: () => void;
   onHide: () => void;
 }) {
-  const { register, handleSubmit, watch, control } = useForm<{
+  const { register, handleSubmit, watch, control, reset, setValue } = useForm<{
     _id: string;
     name: string;
     category: string;
@@ -385,6 +405,17 @@ function ProductAddModal({
     status: boolean;
     image: File;
   }>();
+
+  useEffect(() => {
+    if (!edited) return;
+    reset({ ...edited, image: undefined });
+    axiosInstance
+      .get(`/api/files/get?path=${edited.image}`, { responseType: "blob" })
+      .then((res) => {
+        const image = new File([res.data], "image");
+        setValue("image", image);
+      });
+  }, [edited]);
 
   const inputFileRef = useRef<HTMLInputElement>(null);
   const image = watch("image");
@@ -411,28 +442,61 @@ function ProductAddModal({
       <Modal.Body>
         <Form
           onSubmit={handleSubmit((value) => {
-            const uploadBody = new FormData();
-            uploadBody.append("file", value.image);
-            const uploadQuery = new URLSearchParams({ type: "product_image" });
-            axiosInstance
-              .post(`/api/files/upload?${uploadQuery.toString()}`, uploadBody)
-              .then((res) => {
-                axiosInstance
-                  .post(`/api/products`, {
-                    name: value.name,
-                    category: value.category,
-                    stock: value.stock,
-                    price: value.price,
-                    description: value.description,
-                    image: res.data.data,
-                  })
-                  .then((res) => {
-                    onAdded();
-                    onHide();
-                  })
-                  .catch(console.error);
-              })
-              .catch(console.error);
+            // suibmit: create new
+            if (!edited) {
+              const uploadBody = new FormData();
+              uploadBody.append("file", value.image);
+              const uploadQuery = new URLSearchParams({
+                type: "product_image",
+              });
+              axiosInstance
+                .post(`/api/files/upload?${uploadQuery.toString()}`, uploadBody)
+                .then((res) => {
+                  axiosInstance
+                    .post(`/api/products`, {
+                      name: value.name,
+                      category: value.category,
+                      stock: value.stock,
+                      price: value.price,
+                      description: value.description,
+                      image: res.data.data,
+                    })
+                    .then((res) => {
+                      onAdded();
+                      onHide();
+                    })
+                    .catch(console.error);
+                })
+                .catch(console.error);
+            }
+
+            // submit: edit existing
+            else {
+              const uploadBody = new FormData();
+              uploadBody.append("file", value.image);
+              const uploadQuery = new URLSearchParams({
+                type: "product_image",
+              });
+              axiosInstance
+                .post(`/api/files/upload?${uploadQuery.toString()}`, uploadBody)
+                .then((res) => {
+                  axiosInstance
+                    .put(`/api/products/${value._id}`, {
+                      name: value.name,
+                      category: value.category,
+                      stock: value.stock,
+                      price: value.price,
+                      description: value.description,
+                      image: res.data.data,
+                    })
+                    .then((res) => {
+                      onAdded();
+                      onHide();
+                    })
+                    .catch(console.error);
+                })
+                .catch(console.error);
+            }
           })}
         >
           <div className="row mb-3">
@@ -587,7 +651,7 @@ function ProductAddModal({
               Cancel
             </button>
             <button className="btn btn-primary" type="submit">
-              Tambah
+              Simpan
             </button>
           </div>
         </Form>
